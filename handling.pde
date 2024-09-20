@@ -1,62 +1,37 @@
 //---------------------------------------------------> player handling <---------------------------------------------------\\
 
-
 void keyPressed() {
-  switch(key) {
-    case 'a':
-        player.moving = true;
-        player.movingLeft = true;
-      break;
-    case 'd':
-        player.moving = true;
-        player.movingRight = true;
-      break;
-    case 'w':
-        player.moving = true;
-        player.isJumping = true;
-      break;
-  }
-  
-  
-  // temp fix
-  switch(key) {
-    case 'A':
-        player.moving = true;
-        player.movingLeft = true;
-      break;
-    case 'D':
-        player.moving = true;
-        player.movingRight = true;
-      break;
-    case 'W':
-        player.moving = true;
-        player.isJumping = true;
-      break;
-  }
+  handleMovement(true);
 }
 
 void keyReleased() {
-  switch(key) {
+  handleMovement(false);
+}
+
+void handleMovement(boolean isMoving) {
+  switch (key) {
     case 'a':
-        player.moving = false;
-        player.movingLeft = false;
-      break;
-    case 'd':
-        player.moving = false;
-        player.movingRight = false;
-      break;
-  }
-    // temp fix
-    switch(key) {
     case 'A':
-        player.moving = false;
-        player.movingLeft = false;
+      player.movingLeft = isMoving;
+      if (isMoving) player.moving = true; 
       break;
+      
+      
+    case 'd':
     case 'D':
-        player.moving = false;
-        player.movingRight = false;
+      player.movingRight = isMoving;
+      if (isMoving) player.moving = true;  
+      break;
+      
+      
+    case 'w':
+    case 'W':
+      player.isJumping = isMoving;  
       break;
   }
+  
+
+  player.moving = player.movingLeft || player.movingRight;
 }
 
 

@@ -22,11 +22,13 @@ localPlayer player;
 
 void setup() {
   background(14, 12, 18);
-  frameRate(120);
+  frameRate(240);
   windowTitle("RogueLike Rogue");
   fullScreen();
-  img = loadImage("textures/texturePack.png");
-
+  
+  if (img == null) 
+    img = loadImage("textures/texturePack.png");
+  
   
   size(displayWidth, displayHeight);
   
@@ -36,27 +38,24 @@ void setup() {
   player = new localPlayer();
   
   
-  backgroundGraphics = createGraphics(width, height);
-
-  backgroundGraphics.beginDraw();
-  for (int x = 0; x < width; x += textures[430].width) {
-    for (int y = 0; y < height; y += textures[430].height) {
-      backgroundGraphics.image(textures[430], x, y);
+  if (backgroundGraphics == null) {
+    backgroundGraphics = createGraphics(width, height);
+    backgroundGraphics.beginDraw();
+    for (int x = 0; x < width; x += textures[430].width) {
+      for (int y = 0; y < height; y += textures[430].height) {
+        backgroundGraphics.image(textures[430], x, y);
+      }
     }
+    backgroundGraphics.endDraw();
   }
-  
-  
-  
-  backgroundGraphics.endDraw();
 
   smooth(16);
-  player = new localPlayer();
 }
 
 
 
-
 void draw() {
+  System.gc();
   image(backgroundGraphics, 0 , 0);
   float offsetX = constrain(-player.pos.x + width / 2, width - worldWidth, 0);
   float offsetY = constrain(-player.pos.y + height / 2, height - worldHeight, 0);
@@ -67,4 +66,8 @@ void draw() {
   player.move();
   if (player.alive)
     noCursor();
+    
+    
+
+  drawCenterMsg(700, 250, str(floor(offsetX - player.pos.x)), floor(offsetX - player.pos.x));
 }

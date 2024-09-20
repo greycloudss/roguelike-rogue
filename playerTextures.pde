@@ -12,8 +12,10 @@ class PlayerTextures {
 
 
   PlayerTextures() {
+    PImage tmp = null;
     for (int i = 0; i < 5; ++i) {
-      PImage tmp = loadImage(pPath);
+      if (tmp == null)
+        tmp = loadImage(pPath);
       switch (i) {
         case 0:
           idle = setupPlayerSprites(tmp, pHeight, pWidth, i, idle.length);
