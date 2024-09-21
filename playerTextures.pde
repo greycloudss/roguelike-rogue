@@ -25,7 +25,6 @@ class PlayerTextures {
           break;
         case 2:
           attack = setupPlayerSprites(tmp, pHeight, pWidth, i, attack.length);
-
           break;
         case 3:
           hurt = setupPlayerSprites(tmp, pHeight, pWidth, i, hurt.length);

@@ -16,18 +16,22 @@ void handleMovement(boolean isMoving) {
       if (isMoving) player.moving = true; 
       break;
       
-      
+    
     case 'd':
     case 'D':
       player.movingRight = isMoving;
       if (isMoving) player.moving = true;  
       break;
-      
-      
+        
     case 'w':
     case 'W':
       player.isJumping = isMoving;  
       break;
+      
+    case ' ':
+      player.isDoubleJumping = isMoving;
+      break;
+
   }
   
 
