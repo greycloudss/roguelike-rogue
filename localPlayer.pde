@@ -10,8 +10,9 @@ class localPlayer {
 
   int curFrame, totalFrames, frameCounter;
 
-  int oneJump = yZero - 250;
-  int doubleJump = yZero - 310;
+  float jumpForce = 10; 
+  float gravity = 0.4; 
+  boolean onGround;
 
   int health;
   boolean movingLeft;
@@ -24,21 +25,20 @@ class localPlayer {
   boolean alive;
   boolean facingLeft;
   boolean attackActive;
-  boolean isAttacking; // Track attack state
+  boolean isAttacking;
 
   PImage[] curState;
- 
+
   float htbWidth, htbHeight;
   PVector htbVec = new PVector();
- 
+  PVector velocity = new PVector(); // To manage vertical movement
 
   localPlayer() {
     ptextures = new PlayerTextures();
     pos = new PVector(0, 300);
-    pWidth *= 5; // multiplied by 5 to make it not as small as previously, less opps
+    pWidth *= 5;
     pHeight *= 5;
-    
-    
+
     movingRight = false;
     movingLeft = false;
     moving = false;
@@ -57,60 +57,50 @@ class localPlayer {
     facingLeft = false;
     attackActive = false;
     isAttacking = false;
-    
+
     htbWidth = pWidth * 0.25;
     htbHeight = pHeight * 0.3;
   }
 
   void drawHurtbox() {
-      fill(10, 10, 10, 150);
-      noStroke();
-
-      rect(htbVec.x, htbVec.y, htbWidth, htbHeight);
+    fill(10, 10, 10, 150);
+    noStroke();
+    rect(htbVec.x, htbVec.y, htbWidth, htbHeight);
   }
-  
-  
+
   void displayChar() {
     htbVec.x = pos.x + (pWidth - htbWidth) / 2;
     htbVec.y = pos.y + (pHeight - htbHeight) / 1.5;
     
+   
     
-    
-    // Update the current state based on player movement or action
     if (isAttacking) {
       curState = ptextures.attack;
-
       if (curFrame >= 9 && curFrame < 13) {
-        attackActive = true; // Activate attack hitbox during attack frames
+        attackActive = true;
       } else {
-        attackActive = false; // Deactivate hitbox otherwise
+        attackActive = false;
       }
-    } else if (!isFalling && isJumping || isDoubleJumping) {
-      curState = ptextures.run;
-    } else if (isFalling && !isJumping) {
+    } else if (isFalling) {
       curState = ptextures.idle;
     } else if (moving) {
       curState = ptextures.run;
-    } else if (!alive) {
-      curState = ptextures.death;
     } else {
       curState = ptextures.idle;
     }
 
     totalFrames = curState.length;
 
-    // FRAME HANDLING
     if (frameCounter % animSpeed == 0) {
-      curFrame = (curFrame + 1) % totalFrames; // Loop through frames
+      curFrame = (curFrame + 1) % totalFrames;
     }
 
     frameCounter++;
 
-    // Reset frame and attack state if animation finishes
     if (curFrame >= totalFrames) {
       curFrame = 0;
-      isAttacking = false; // Reset attacking state when animation finishes
-      attackActive = false; // Ensure hitbox is deactivated
+      isAttacking = false;
+      attackActive = false;
     }
 
     if (curState != null && curState[curFrame] != null) {
@@ -125,8 +115,7 @@ class localPlayer {
       }
     }
 
-    //drawHurtbox();
-    if (attackActive) drawAttackHitbox(); // Draw attack hitbox if active
+    if (attackActive) drawAttackHitbox();
   }
 
   void drawAttackHitbox() {
@@ -141,23 +130,19 @@ class localPlayer {
 
   void move() {
     if (alive) {
-      // Check if the mouse is pressed
       if (mousePressed && mouseButton == LEFT) {
         if (!isAttacking) {
-          isAttacking = true; // Start attacking
-          strike = true; // Set strike to true to enter attack mode
+          isAttacking = true;
+          strike = true;
         }
       } else if (isAttacking) {
-        // If mouse is released while attacking, stop the attack
         isAttacking = false;
-        strike = false; // Stop striking
+        strike = false;
       }
-      
 
       jump();
       displayChar();
 
-      // Handle movement
       if (moving) {
         if (movingRight) {
           pos.x += speed;
@@ -170,59 +155,35 @@ class localPlayer {
       }
 
       if (strike) {
-        moving = false; // Stop moving if striking
+        moving = false;
       }
 
       // Constrain position
       pos.x = constrain(pos.x, -90, world.wWidth);
       pos.y = constrain(pos.y, 0, world.wHeight);
+      collisions(world, player);
     }
   }
 
   void jump() {
-    if (isJumping && isDoubleJumping) {
-        pos.y -= speed * 4; // Double jump speed
-
-        if (movingRight) {
-            pos.x += speed * 4; // Apply horizontal movement in double jump
-        }
-        if (movingLeft) {
-            pos.x -= speed * 4;
-        }
-
-        if (pos.y <= doubleJump) {
-            isDoubleJumping = false;
-            isFalling = true; 
-        }
-    } else if (isJumping && !isFalling) { // Regular jump
-        curState = ptextures.run;
-        pos.y -= speed * 4; // Jumping speed
-
-        if (movingRight) {
-            pos.x += speed * 4;
-        }
-        if (movingLeft) {
-            pos.x -= speed * 4;
-        }
-
-        if (pos.y <= oneJump) {
-            isJumping = false;
-            isFalling = true;
-        }
+    if (onGround) {
+      if (isJumping) {
+        onGround = false;
+        velocity.y = -jumpForce; // Apply jump force
+        isJumping = false; // Reset jump state after applying
+      } 
     }
 
-    if (isFalling) {
-        pos.y += speed;
-        curState = ptextures.idle;
+    // Apply gravity
+    if (!onGround) {
+      velocity.y += gravity;
+      pos.y += velocity.y; // Update position based on velocity
 
-        if (pos.y >= yZero) { // Player hits the ground
-            pos.y = yZero;
-            curState = ptextures.idle;
-            isFalling = false;
-            isJumping = false;
-            isDoubleJumping = false; // Reset double jump when hitting the ground
-        }
+      if (pos.y >= yZero) { // Check if player hits the ground
+        pos.y = yZero; // Reset position to ground
+        velocity.y = 0; // Reset vertical velocity
+        onGround = true; // Player is back on the ground
+      }
     }
-    curState = ptextures.idle;
   }
 }

@@ -40,23 +40,131 @@ void showTexturesIds() {
   }
 }
 
+void collisions(World world, localPlayer player) {
+    // initialize grounded flag
+    boolean grounded = false;
+    
+    //everywhere you see this: (player.pHeight - player.htbHeight) * 0.5
+    //thats the difference between the sprites 
+    
+    // tile size and player bounding box
+    float tileSize = wh;
+    float playerBottom = player.pos.y + player.pHeight - (player.pHeight - player.htbHeight) * 0.5;
+    float playerLeft = player.pos.x;
+    float playerRight = player.pos.x + player.pWidth;
+
+    //calculate tile range for checking around the player
+    int tileXStart = (int) (playerLeft / tileSize);
+    int tileXEnd = (int) (playerRight / tileSize);
+    int tileYBelow = (int) ((playerBottom + 1) / tileSize); // check the tile directly below player's feet
+
+    for (int x = tileXStart; x <= tileXEnd; x++) {
+        if (x >= 0 && x < world.wWidth / tileSize && tileYBelow >= 0 && tileYBelow < world.wHeight / tileSize) {
+            Tile currentTile = world.tiles[x][tileYBelow];
+            
+            // Check if this tile is collidable
+            if (currentTile != null && currentTile.collision) {
+                // Calculate the top of the tile
+                float tileTop = tileYBelow * tileSize;
+
+                // check if players feet are at or below the top of this tile
+                if (playerBottom >= tileTop - (player.pHeight - player.htbHeight) * 0.5) {
+                    grounded = true;
+                    player.pos.y = tileTop - player.pHeight + (player.pHeight - player.htbHeight) * 0.5; // snap the player to the top of the tile
+                    player.velocity.y = 0; // reset vertical velocity
+
+                    break;  // stop checking other tiles once grounded
+                }
+            }
+        }
+    }
+
+    ///if the player is not grounded apply gravity
+    if (!grounded) {
+        player.velocity.y += player.gravity;
+        player.pos.y += player.velocity.y;
+    }
+
+
+    // dynamic y offset calculation for rendering purposes
+    float yOffset = player.htbVec.y + player.pos.y - (player.pHeight - player.htbHeight) * 0.5;
+}
+/*
+void collisions(World world, localPlayer player) {
+  int playerTileX = floor(player.htbVec.x / wh);
+  int playerTileY = floor(player.htbVec.y / wh);
+  int range = 15;
+  
+  float pxMid = player.htbVec.x + player.htbWidth * 0.5; //since computers suck at division we do multiplication
+  float pyMid = player.htbVec.y + player.htbHeight * 0.5;
+  
+  
+  float tolerance = 0.1f;
+  
+  for (int y = max(0, playerTileY - range); y < min(world.wHeight / wh, playerTileY + range); ++y) {
+    for (int x = max(0, playerTileX - range); x < min(world.wWidth / wh, playerTileX + range); ++x) {
+      if (world.tiles[x][y] != null && world.tiles[x][y].collision == true) {
+      
+        float tilexMid = x * world.tiles[x][y].size + world.tiles[x][y].size * 0.5;
+        float tileyMid = y * world.tiles[x][y].size + world.tiles[x][y].size * 0.5;
+      
+        float combinedHalvesX = (player.htbWidth + world.tiles[x][y].size) * 0.5;
+        float combinedHalvesY = (player.htbHeight + world.tiles[x][y].size) * 0.5;
+      
+      
+        float distX = abs(pxMid - tilexMid);
+        float distY = abs(pyMid - tileyMid) ;
+      
+      if (distX <= combinedHalvesX && distY <= combinedHalvesY) {
+          float overlapX = combinedHalvesX - distX;
+          float overlapY = combinedHalvesY - distY;
+          if (overlapY > overlapX) {
+            if (pyMid > tileyMid) {
+
+              player.pos.y -= overlapY + tolerance;
+
+            } else {
+              player.pos.y += overlapY + tolerance;
+            }
+          } else {
+            if (pxMid > tilexMid)
+              player.pos.x += overlapX + tolerance;
+            else {
+              player.pos.x -= overlapY + tolerance;
+            }
+          }
+
+        //if (abs(player.pos.y - player.pHeight  - tolerance) < world.tiles[x][y].size * y)
+          //player.pos.y = world.tiles[x][y].size * y + player.htbHeight * 10;
+        }
+        
+      }
+    }
+  }
+}
+
+
+
+*/
+
+/*
 void collisions(World world, localPlayer player) { 
   int playerTileX = floor(player.htbVec.x / wh);
   int playerTileY = floor(player.htbVec.y / wh);
   
-  // Adjusted range for bigger player hitbox, you can adjust this if needed
+  // Adjusted range, you can adjust this if needed
   int range = 100; // Increase from 2 to 3 to check a slightly larger area
 
   for (int y = max(0, playerTileY - range); y < min(world.wHeight / wh, playerTileY + range); ++y) {
     for (int x = max(0, playerTileX - range); x < min(world.wWidth / wh, playerTileX + range); ++x) {
       if (world.tiles[x][y] != null && world.tiles[x][y].collision == true) {
-        /*
-        |*  once in a lifetime opportunity to see me document this extenswively
+        
+        |*  once in a lifetime opportunity to see me document this extensively
         |*  so basically we take the middle of the player model and the object to collide with model
         |*  we get the dist between those and then we see if the distance is less than the length from middle to middle
         |*  pretty much what little optimisation ive done so far has been negated by this one function
         |*  it is 3 am while writting so if there are logical errors in my explanation watch the original youtube video explanation of how collisions work
-        */
+        
         int distx = floor((player.htbVec.x + player.htbWidth / 2) - (x * world.tiles[x][y].size + world.tiles[x][y].size / 2));
         int disty = floor((player.htbVec.y + player.htbHeight / 2) - (y * world.tiles[x][y].size + world.tiles[x][y].size / 2));
 
@@ -86,65 +194,4 @@ void collisions(World world, localPlayer player) {
       } 
     }
   }
-}
-
-
-/*
-void collisions(World world, localPlayer player) { 
-  //forbidden rectangle of testing
-  
-  // First, calculate the player's current tile position
-  int playerTileX = floor(player.htbVec.x / wh);
-  int playerTileY = floor(player.htbVec.y / wh);
-  
-  // Define a small range around the player to check tiles (instead of checking the entire world)
-  int range = 2; // You can adjust this based on the player's size and movement speed
-
-  for (int y = max(0, playerTileY - range); y < min(world.wHeight / wh, playerTileY + range); ++y) { // Loop through a small range of columns
-    for (int x = max(0, playerTileX - range); x < min(world.wWidth / wh, playerTileX + range); ++x) { // Loop through a small range of rows
-      if (world.tiles[x][y] != null && world.tiles[x][y].collision == true) { // check if tile collides
-        
-        |*  once in a lifetime opportunity to see me document this extensively
-        |*  so basically we take the middle of the player model and the object to collide with model
-        |*  we get the dist between those and then we see if the distance is less than the length from middle to middle
-        |*  pretty much what little optimisation ive done so far has been negated by this one function
-        |*  it is 3 am while writting so if there are logical errors in my explanation watch the original youtube video explanation of how collisions work
-        
-      
-        println("Checking collision at tile: (" + x + ", " + y + ")");
-        //x axis dist
-        //i sincerelly hope i do not have to explain this because im following a youtube tutorial
-        int distx = floor((player.htbVec.x + player.htbWidth / 2) - (x * world.tiles[x][y].size + world.tiles[x][y].size / 2));
-        //y axis dist
-        //reason why i use size instead of just the global var wh is because i can modify the size without modifying the global var
-        int disty = floor((player.htbVec.y + player.htbHeight / 2) - (y * world.tiles[x][y].size + world.tiles[x][y].size / 2));
-        
-        int combinedHalvesW = floor(player.htbWidth / 2 + world.tiles[x][y].size / 2);
-        int combinedHalvesH = floor(player.htbHeight / 2 + world.tiles[x][y].size / 2);
-        
-        //check for overlap
-        if (abs(distx) < combinedHalvesW && abs(disty) < combinedHalvesH) {
-          //calculate how much overlap there is
-          //the youtube video mentioned this to be simple math so if its not im going to be sad
-          int overlapX = combinedHalvesW - abs(distx);
-          int overlapY = combinedHalvesH - abs(disty);
-
-          //look for smallest overlap and resolve the collision
-          if (overlapX < overlapY) {
-            // Resolve X-axis overlap
-            if (distx > 0)
-              player.pos.x += overlapX; // overlap Left
-            else
-              player.pos.x -= overlapX; // overlap Right
-          } else {
-            // Resolve Y-axis overlap
-            if (disty > 0)
-              player.pos.y += overlapY; // overlap Top
-            else
-              player.pos.y -= overlapY; // overlap Bot
-          }
-        }
-      } 
-    }
-  } 
 }*/
