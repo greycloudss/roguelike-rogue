@@ -1,5 +1,7 @@
 //---------------------------------------------------> world generation <---------------------------------------------------\\
 
+
+
 class Tile {
   int size;
   boolean collision;
@@ -54,9 +56,9 @@ class World extends Tile {
         // Draw the background texture
         if (y != wHeight / background.size - 5) {
           image(background.texture, x * background.size, y * background.size);
-        } else {
-          tiles[x][32] = new Tile(textures[500], true, wh); // Ground tiles at a specific height
-        }
+        } else
+          tiles[x][32] = new Tile(textures[242], true, wh); // Ground tiles at a specific height
+        
 
         // Draw any existing tiles
         if (tiles[x][y] != null) {

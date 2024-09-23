@@ -1,6 +1,5 @@
-PlayerTextures ptextures;
-
 class localPlayer {
+  PlayerTextures ptextures;
   int animSpeed = 7;
   int yZero = displayHeight + 500;
   int pHeight = 80;
@@ -13,14 +12,14 @@ class localPlayer {
   float jumpForce = 10; 
   float gravity = 0.4; 
   boolean onGround;
+  boolean isJumping;
+  boolean isDoubleJumping;
+  boolean isFalling;  // Added here
 
   int health;
   boolean movingLeft;
   boolean movingRight;
   boolean moving;
-  boolean isJumping;
-  boolean isDoubleJumping;
-  boolean isFalling;
   boolean strike;
   boolean alive;
   boolean facingLeft;
@@ -31,20 +30,21 @@ class localPlayer {
 
   float htbWidth, htbHeight;
   PVector htbVec = new PVector();
-  PVector velocity = new PVector(); // To manage vertical movement
+  PVector velocity = new PVector();
 
   localPlayer() {
-    ptextures = new PlayerTextures();
+    ptextures = new PlayerTextures(pPath);
     pos = new PVector(0, 300);
     pWidth *= 5;
     pHeight *= 5;
 
+    // Initialize states
     movingRight = false;
     movingLeft = false;
     moving = false;
     isJumping = false;
     isDoubleJumping = false;
-    isFalling = false;
+    isFalling = false;  // Initialize to false
     strike = false;
     alive = true;
     health = 100;
@@ -71,16 +71,11 @@ class localPlayer {
   void displayChar() {
     htbVec.x = pos.x + (pWidth - htbWidth) / 2;
     htbVec.y = pos.y + (pHeight - htbHeight) / 1.5;
-    
-   
-    
+
+    // Set the current state based on actions
     if (isAttacking) {
       curState = ptextures.attack;
-      if (curFrame >= 9 && curFrame < 13) {
-        attackActive = true;
-      } else {
-        attackActive = false;
-      }
+      attackActive = (curFrame >= 9 && curFrame < 13);
     } else if (isFalling) {
       curState = ptextures.idle;
     } else if (moving) {
@@ -130,6 +125,7 @@ class localPlayer {
 
   void move() {
     if (alive) {
+      // Handle attack state
       if (mousePressed && mouseButton == LEFT) {
         if (!isAttacking) {
           isAttacking = true;
@@ -140,50 +136,71 @@ class localPlayer {
         strike = false;
       }
 
-      jump();
-      displayChar();
-
-      if (moving) {
+      // Handle horizontal movement
+      float horizontalMovement = 0;
+      if (moving && !strike) {
         if (movingRight) {
-          pos.x += speed;
+          horizontalMovement = speed;
           facingLeft = false;
         }
         if (movingLeft) {
-          pos.x -= speed;
+          horizontalMovement = -speed;
           facingLeft = true;
         }
       }
 
-      if (strike) {
-        moving = false;
-      }
+      // Apply horizontal movement
+      pos.x += horizontalMovement;
 
-      // Constrain position
+      // Apply vertical movement
+      applyVerticalMovement();
+
+      // Check collisions
+      collisions(world, this);
+
+      // Constrain position to world boundaries
       pos.x = constrain(pos.x, -90, world.wWidth);
       pos.y = constrain(pos.y, 0, world.wHeight);
-      collisions(world, player);
+
+      // Update character display
+      displayChar();
     }
+  }
+
+  void applyVerticalMovement() {
+    // Apply gravity if not on the ground
+    if (!onGround) {
+      velocity.y += gravity;
+    } else {
+      velocity.y = 0; // Reset vertical velocity when on ground
+    }
+
+    // Jumping logic
+    if (isJumping) {
+      velocity.y = -jumpForce;  // Set upward velocity
+      onGround = false; // Reset onGround flag
+      isJumping = false; // Reset jump state
+    }
+
+    // Update vertical position
+    pos.y += velocity.y;
+
+    // Update falling state
+    isFalling = !onGround && velocity.y > 0;  // Correctly set isFalling
   }
 
   void jump() {
     if (onGround) {
-      if (isJumping) {
-        onGround = false;
-        velocity.y = -jumpForce; // Apply jump force
-        isJumping = false; // Reset jump state after applying
-      } 
+      isJumping = true;
+    } else if (!isDoubleJumping) {
+      // Enable double jump
+      isJumping = true;
+      isDoubleJumping = true;
     }
+  }
 
-    // Apply gravity
-    if (!onGround) {
-      velocity.y += gravity;
-      pos.y += velocity.y; // Update position based on velocity
-
-      if (pos.y >= yZero) { // Check if player hits the ground
-        pos.y = yZero; // Reset position to ground
-        velocity.y = 0; // Reset vertical velocity
-        onGround = true; // Player is back on the ground
-      }
-    }
+  void land() {
+    onGround = true; // Called when the player collides with the ground
+    isDoubleJumping = false; // Reset double jump when landing
   }
 }

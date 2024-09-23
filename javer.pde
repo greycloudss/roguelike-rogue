@@ -1,3 +1,7 @@
+//---------------------------------------------------> Main file <---------------------------------------------------\\
+
+
+
 import java.io.File;
 
 PImage img;
@@ -10,7 +14,7 @@ PImage[] textures = new PImage[(1024 / wh) * (1024 / wh) + 1];
 
 localPlayer player;
 
-//---------------------------------------------------> Main file <---------------------------------------------------\\
+
 
 void setup() {
   frameRate(240);
@@ -44,4 +48,5 @@ void draw() {
   // Collisions
   if (player.alive)
     noCursor();
+    
 }

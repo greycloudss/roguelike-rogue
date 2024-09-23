@@ -1,4 +1,6 @@
+//---------------------------------------------------> Special local player texture resolver <---------------------------------------------------\\
 String pPath = "textures/NightBorne.png";
+String sPath = "textures/spawn.png";
 
 class PlayerTextures {
   private int pHeight = 80;
@@ -11,11 +13,12 @@ class PlayerTextures {
     PImage[] death = new PImage[23];
 
 
-  PlayerTextures() {
+  PlayerTextures(String path) {
     PImage tmp = null;
+
     for (int i = 0; i < 5; ++i) {
       if (tmp == null)
-        tmp = loadImage(pPath);
+        tmp = loadImage(path);
       switch (i) {
         case 0:
           idle = setupPlayerSprites(tmp, pHeight, pWidth, i, idle.length);
@@ -52,7 +55,3 @@ PImage[] setupPlayerSprites(PImage image, int pWidth, int pHeight, int row, int 
   
   return temp;
 }
-    
-    
-    
-    

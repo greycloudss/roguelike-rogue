@@ -1,5 +1,3 @@
-//---------------------------------------------------> player handling <---------------------------------------------------\\
-
 void keyPressed() {
   handleMovement(true);
 }
@@ -8,30 +6,26 @@ void keyReleased() {
   handleMovement(false);
 }
 
-void handleMovement(boolean isMoving) {
+void handleMovement(boolean isPressed) {
   switch (key) {
     case 'a':
     case 'A':
-      player.movingLeft = isMoving;
-      if (isMoving) player.moving = true; 
+      player.movingLeft = isPressed;
       break;
-      
     
     case 'd':
     case 'D':
-      player.movingRight = isMoving;
-      if (isMoving) player.moving = true;  
+      player.movingRight = isPressed;
       break;
         
     case 'w':
     case 'W':
-      player.isJumping = isMoving; 
+      if (isPressed) {
+        player.jump();  // Call jump method when 'W' is pressed
+      }
       break;
-      
-
-
   }
   
-
+  // Update the player's moving state
   player.moving = player.movingLeft || player.movingRight;
 }
