@@ -1,206 +1,195 @@
 class localPlayer {
-  PlayerTextures ptextures;
-  int animSpeed = 7;
-  int yZero = displayHeight + 500;
-  int pHeight = 80;
-  int pWidth = 80;
-  float speed = 8;
-  PVector pos;
+    PVector pos;
+    int hurtboxWidth = 55;  
+    int hurtboxHeight = 75;  
+    PlayerTextures textures;
 
-  int curFrame, totalFrames, frameCounter;
+    int attackBoxWidth = 70; 
+    int attackBoxHeight = 110; 
+    PVector attackBoxPos; 
 
-  float jumpForce = 10; 
-  float gravity = 0.4; 
-  boolean onGround;
-  boolean isJumping;
-  boolean isDoubleJumping;
-  boolean isFalling;  // Added here
+    boolean inAir, onGround, isMoving, isJumping, isLeft, isRight, isAlive, isAttacking;
 
-  int health;
-  boolean movingLeft;
-  boolean movingRight;
-  boolean moving;
-  boolean strike;
-  boolean alive;
-  boolean facingLeft;
-  boolean attackActive;
-  boolean isAttacking;
+    PVector velocity;
 
-  PImage[] curState;
+    float speed = 5; 
+    float jumpForce = 10;
+    float gravity = 0.4; 
+    float groundHeight;
 
-  float htbWidth, htbHeight;
-  PVector htbVec = new PVector();
-  PVector velocity = new PVector();
+    int spriteWidth = 240; 
+    int spriteHeight = 240; 
+    boolean lastDirectionLeft = false;
 
-  localPlayer() {
-    ptextures = new PlayerTextures(pPath);
-    pos = new PVector(0, 300);
-    pWidth *= 5;
-    pHeight *= 5;
+    int currentFrame = 0;
+    float frameDuration = 0.1; 
+    float animationTimer = 0;
 
-    // Initialize states
-    movingRight = false;
-    movingLeft = false;
-    moving = false;
-    isJumping = false;
-    isDoubleJumping = false;
-    isFalling = false;  // Initialize to false
-    strike = false;
-    alive = true;
-    health = 100;
-
-    curFrame = 0;
-    frameCounter = 0;
-    curState = ptextures.idle;
-    totalFrames = ptextures.idle.length;
-
-    facingLeft = false;
-    attackActive = false;
-    isAttacking = false;
-
-    htbWidth = pWidth * 0.25;
-    htbHeight = pHeight * 0.3;
-  }
-
-  void drawHurtbox() {
-    fill(10, 10, 10, 150);
-    noStroke();
-    rect(htbVec.x, htbVec.y, htbWidth, htbHeight);
-  }
-
-  void displayChar() {
-    htbVec.x = pos.x + (pWidth - htbWidth) / 2;
-    htbVec.y = pos.y + (pHeight - htbHeight) / 1.5;
-
-    // Set the current state based on actions
-    if (isAttacking) {
-      curState = ptextures.attack;
-      attackActive = (curFrame >= 9 && curFrame < 13);
-    } else if (isFalling) {
-      curState = ptextures.idle;
-    } else if (moving) {
-      curState = ptextures.run;
-    } else {
-      curState = ptextures.idle;
-    }
-
-    totalFrames = curState.length;
-
-    if (frameCounter % animSpeed == 0) {
-      curFrame = (curFrame + 1) % totalFrames;
-    }
-
-    frameCounter++;
-
-    if (curFrame >= totalFrames) {
-      curFrame = 0;
-      isAttacking = false;
-      attackActive = false;
-    }
-
-    if (curState != null && curState[curFrame] != null) {
-      if (facingLeft) {
-        pushMatrix();
-        translate(pos.x + pWidth, pos.y);
-        scale(-1, 1);
-        image(curState[curFrame], 0, 0, pWidth, pHeight);
-        popMatrix();
-      } else {
-        image(curState[curFrame], pos.x, pos.y, pWidth, pHeight);
-      }
-    }
-
-    if (attackActive) drawAttackHitbox();
-  }
-
-  void drawAttackHitbox() {
-    noFill();
-    noStroke();
-    float attackWidth = pWidth * 0.5;
-    float attackHeight = pHeight * 0.7;
-    float attackX = facingLeft ? pos.x - pWidth * 0.5 + attackWidth : pos.x + pWidth * 0.5;
-    float attackY = pos.y + (pHeight - attackHeight) / 2;
-    rect(attackX, attackY, attackWidth, attackHeight);
-  }
-
-  void move() {
-    if (alive) {
-      // Handle attack state
-      if (mousePressed && mouseButton == LEFT) {
-        if (!isAttacking) {
-          isAttacking = true;
-          strike = true;
-        }
-      } else if (isAttacking) {
+    localPlayer(PVector pos, float groundHeight) {
+        this.pos = pos;
+        this.groundHeight = groundHeight;
+        this.textures = new PlayerTextures("textures/NightBorne.png");
+        inAir = isJumping = false;
+        onGround = true;
+        isLeft = isRight = false;
+        isMoving = false;
         isAttacking = false;
-        strike = false;
-      }
-
-      // Handle horizontal movement
-      float horizontalMovement = 0;
-      if (moving && !strike) {
-        if (movingRight) {
-          horizontalMovement = speed;
-          facingLeft = false;
-        }
-        if (movingLeft) {
-          horizontalMovement = -speed;
-          facingLeft = true;
-        }
-      }
-
-      // Apply horizontal movement
-      pos.x += horizontalMovement;
-
-      // Apply vertical movement
-      applyVerticalMovement();
-
-      // Check collisions
-      collisions(world, this);
-
-      // Constrain position to world boundaries
-      pos.x = constrain(pos.x, -90, world.wWidth);
-      pos.y = constrain(pos.y, 0, world.wHeight);
-
-      // Update character display
-      displayChar();
+        velocity = new PVector(0, 0);
     }
-  }
+    int getHurtboxWidth() {
+        return hurtboxWidth;
+    }
 
-  void applyVerticalMovement() {
-    // Apply gravity if not on the ground
+    int getHurtboxHeight() {
+        return hurtboxHeight;
+    }
+void update(ArrayList<Enemy> enemies) {
     if (!onGround) {
-      velocity.y += gravity;
+        velocity.y += gravity;
+    }
+
+    if (isLeft && !isRight) {
+        moveLeft();
+    } else if (isRight && !isLeft) {
+        moveRight();
     } else {
-      velocity.y = 0; // Reset vertical velocity when on ground
+        velocity.x = 0; 
     }
 
-    // Jumping logic
-    if (isJumping) {
-      velocity.y = -jumpForce;  // Set upward velocity
-      onGround = false; // Reset onGround flag
-      isJumping = false; // Reset jump state
-    }
-
-    // Update vertical position
+    pos.x += velocity.x;
     pos.y += velocity.y;
 
-    // Update falling state
-    isFalling = !onGround && velocity.y > 0;  // Correctly set isFalling
-  }
-
-  void jump() {
-    if (onGround) {
-      isJumping = true;
-    } else if (!isDoubleJumping) {
-      // Enable double jump
-      isJumping = true;
-      isDoubleJumping = true;
+    if (pos.y + hurtboxHeight > groundHeight) {
+        pos.y = groundHeight - hurtboxHeight; 
+        onGround = true;
+        velocity.y = 0;
+    } else {
+        onGround = false; 
     }
-  }
 
-  void land() {
-    onGround = true; // Called when the player collides with the ground
-    isDoubleJumping = false; // Reset double jump when landing
-  }
+    animationTimer += 1 / 60.0; 
+    if (animationTimer >= frameDuration) {
+        animationTimer = 0;
+        updateAnimationFrame();
+    }
+
+    if (isAttacking && currentFrame == 10) { 
+        for (Enemy enemy : enemies) {
+            if (enemy.checkHit(attackBoxPos, attackBoxWidth, attackBoxHeight)) {
+                enemy.hit(10); 
+                println("Hit the enemy!");
+            }
+        }
+    }
+
+    drawPlayer();
+}
+
+    void updateAnimationFrame() {
+        if (isAttacking) {
+            currentFrame++;
+            if (textures.attack != null && currentFrame >= textures.attack.length) {
+                isAttacking = false; 
+                currentFrame = 0; 
+            }
+        } else if (isMoving) {
+            currentFrame++;
+            if (textures.run != null && currentFrame >= textures.run.length) {
+                currentFrame = 0; 
+            }
+        } else {
+            currentFrame++;
+            if (textures.idle != null && currentFrame >= textures.idle.length) {
+                currentFrame = 0; 
+            }
+        }
+    }
+
+    void moveLeft() {
+        velocity.x = -speed;
+        isLeft = true; 
+        isRight = false; 
+        isMoving = true; 
+        lastDirectionLeft = true; 
+    }
+
+    void moveRight() {
+        velocity.x = speed;
+        isRight = true; 
+        isLeft = false; 
+        isMoving = true; 
+        lastDirectionLeft = false; 
+    }
+
+    void jump() {
+        if (onGround) {
+            velocity.y = -jumpForce;
+            onGround = false;
+        }
+    }
+
+    void land() {
+        onGround = true;
+    }
+
+    void drawPlayer() {
+        PImage currentSprite;
+
+        if (isAttacking && textures.attack != null) {
+            currentSprite = textures.attack[currentFrame % textures.attack.length]; 
+        } else if (isMoving && textures.run != null) {
+            currentSprite = textures.run[currentFrame % textures.run.length]; 
+        } else {
+            currentSprite = textures.idle[currentFrame % textures.idle.length]; 
+        }
+
+        stroke(255, 0, 0); 
+        noFill();
+        rect(pos.x, pos.y, hurtboxWidth, hurtboxHeight); 
+
+        if (isAttacking) {
+            attackBoxPos = new PVector(lastDirectionLeft ? pos.x - attackBoxWidth : pos.x + hurtboxWidth, 
+                                        pos.y + (hurtboxHeight - attackBoxHeight)); 
+
+            if (currentFrame >= textures.attack.length - 3) {
+                stroke(0, 255, 0); 
+                rect(attackBoxPos.x, attackBoxPos.y, attackBoxWidth, attackBoxHeight);
+            }
+        }
+
+        pushMatrix(); 
+        translate(pos.x + (hurtboxWidth / 2), pos.y + (hurtboxHeight - spriteHeight) + 50); 
+
+        if (lastDirectionLeft) {
+            scale(-1, 1); 
+        }
+
+        image(currentSprite, -spriteWidth / 2, 0, spriteWidth, spriteHeight); 
+        popMatrix(); 
+    }
+
+    void resetAnimationState() {
+        currentFrame = 0; 
+        animationTimer = 0; 
+    }
+
+    void changeState(boolean moving, boolean attacking) {
+        if (moving) {
+            if (!isMoving) {
+                isMoving = true;
+                resetAnimationState();
+            }
+        } else {
+            isMoving = false;
+        }
+
+        if (attacking) {
+            if (!isAttacking) {
+                isAttacking = true;
+                resetAnimationState();
+            }
+        } else {
+            isAttacking = false;
+        }
+    }
 }
