@@ -1,198 +1,245 @@
+/**
+ * Represents an enemy character in the game.
+ * The enemy has properties such as position, health points, and states for animations.
+ * It can move, attack the player, and respond to damage.
+ */
 class Enemy {
-    PVector pos;
-    int hp = 50;
-    boolean isAlive = true;
+    PVector pos;                // Position of the enemy
+    int hp = 50;                // Health points of the enemy
+    boolean isAlive = true;     // Indicates if the enemy is alive
 
-    int hitboxWidth = 45;  
-    int hitboxHeight = 70; 
+    int hurtboxWidth = 45;      // Width of the enemy's hurtbox
+    int hurtboxHeight = 70;     // Height of the enemy's hurtbox
 
-    int damageDealt = 0;
-    int damageDisplayTimer = 0;
-    int hitCooldown = 0;  
+    int damageDealt = 10;       // Amount of damage the enemy can deal
+    int damageDisplayTimer = 0; // Timer for displaying damage dealt to the player
+    int hitCooldown = 0;        // Cooldown timer for taking damage
+    int attackCooldown = 0;     // Cooldown timer for attacking
 
-    EnemyTextures textures; 
+    EnemyTextures textures;      // Textures associated with the enemy
 
-    int currentFrame = 0;
-    float frameDuration = 0.1; 
-    float animationTimer = 0;
+    int currentFrame = 0;       // Current frame for animation
+    float frameDuration = 0.1;   // Duration of each frame in the animation
+    float animationTimer = 0;    // Timer for managing animation frames
 
-    int spriteWidth = 180;  
-    int spriteHeight = 160; 
+    int spriteWidth = 180;      // Width of the enemy sprite
+    int spriteHeight = 160;     // Height of the enemy sprite
 
-    float speed = 2; 
-    float jumpStrength = -10; 
-    boolean facingRight = true; 
-    boolean isJumping = false; 
-    boolean onGround = true;
-    float gravity = 0.5; 
-    float verticalSpeed = 0; 
+    float speed = 2;            // Movement speed of the enemy
+    boolean facingRight = true;  // Direction the enemy is facing
 
-    int state = 0; 
-    int stateTimer = 0; 
-    int maxStateTimer = 60; 
+    int state = 0;              // Current state of the enemy (0 = idle/patrolling, 1 = attacking)
+    int stateTimer = 0;         // Timer for managing state changes
+    int maxStateTimer = 60;     // Maximum duration for each state
 
-    Enemy(PVector pos) {
+    float platformStartX;       // Starting X position for patrolling
+    float platformEndX;         // Ending X position for patrolling
+
+    /**
+     * Constructor for the Enemy class.
+     * Initializes the enemy's position, platform boundaries, and loads the associated textures.
+     *
+     * @param pos The initial position of the enemy.
+     * @param platformStartX The starting X position for the enemy's patrol.
+     * @param platformEndX The ending X position for the enemy's patrol.
+     */
+    Enemy(PVector pos, float platformStartX, float platformEndX) {
         this.pos = pos;
-        this.textures = new EnemyTextures(); 
-        state = 0; 
-        stateTimer = maxStateTimer; 
+        this.textures = new EnemyTextures();
+        this.platformStartX = platformStartX;
+        this.platformEndX = platformEndX;
+        state = 0;  // Set initial state to idle/patrolling
+        stateTimer = maxStateTimer; // Set initial state timer
     }
 
+    /**
+     * Checks if the enemy has been hit by an attack.
+     *
+     * @param attackBoxPos The position of the attack box.
+     * @param attackBoxWidth The width of the attack box.
+     * @param attackBoxHeight The height of the attack box.
+     * @return True if the enemy was hit, false otherwise.
+     */
     boolean checkHit(PVector attackBoxPos, int attackBoxWidth, int attackBoxHeight) {
-        return attackBoxPos.x < pos.x + hitboxWidth &&
+        return attackBoxPos.x < pos.x + hurtboxWidth &&
                attackBoxPos.x + attackBoxWidth > pos.x &&
-               attackBoxPos.y < pos.y + hitboxHeight &&
+               attackBoxPos.y < pos.y + hurtboxHeight &&
                attackBoxPos.y + attackBoxHeight > pos.y;
     }
 
+    /**
+     * Inflicts damage to the enemy and updates its health.
+     * If health drops to zero or below, the enemy is marked as dead.
+     *
+     * @param damage The amount of damage to inflict.
+     */
     void hit(int damage) {
         if (isAlive && hitCooldown == 0) {
             hp -= damage;
-            damageDealt = damage;
             damageDisplayTimer = 60;
-            hitCooldown = 30;
+            hitCooldown = 30; // Start cooldown after taking damage
 
             println("Enemy HP: " + hp);
 
             if (hp <= 0) {
-                isAlive = false;
-                die();
+                isAlive = false; // Mark enemy as dead
+                die(); // Call the die method
             }
         }
     }
 
+    /**
+     * Handles the enemy's death, performing any necessary cleanup or effects.
+     */
     void die() {
-        println("Enemy died!");
-    }
-    
-    void jump() {
-        if (!onGround) {
-            verticalSpeed = -jumpStrength;
-            onGround = false;
-        }
-    }
-    
-    void land() {
-      onGround = true;
+        println("Enemy died!"); // Print death message
     }
 
-  void update(World world) {
-    float groundLevel = world.wHeight - hitboxHeight; 
+    /**
+     * Updates the enemy's position, state, and animations based on the player's actions and proximity.
+     *
+     * @param world The world in which the enemy resides.
+     * @param player The player character to check for interactions.
+     */
+    void update(World world, localPlayer player) {
+        if (!isAlive) return; // Don't update if the enemy is dead
 
-    stateTimer--;
-    if (stateTimer <= 0) {
-        changeState();
-    }
+        // Check distance to player
+        float distanceToPlayer = PVector.dist(pos, player.pos);
+        boolean isInAttackRange = distanceToPlayer < 200; // Attack range
 
-    switch (state) {
-        case 0: 
-            pos.x += speed;
-            if (pos.x < 0 || pos.x > world.wWidth - hitboxWidth) {
-                speed *= -1; 
-            }
-            facingRight = speed > 0;
-            break;
-
-        case 1: 
-
-            break;
-
-        case 2: 
-            if (!isJumping && pos.y >= groundLevel) {
-                verticalSpeed = jumpStrength;
-                isJumping = true;
+        // Movement logic
+        if (isInAttackRange) {
+            // Determine the direction towards the player
+            if (pos.x < player.pos.x && pos.x + hurtboxWidth < player.pos.x) {
+                pos.x += speed; // Move towards the player
+                facingRight = true; // Update facing direction
+            } else if (pos.x > player.pos.x && pos.x > player.pos.x + player.hurtboxWidth) {
+                pos.x -= speed; // Move away from the player
+                facingRight = false; // Update facing direction
             }
 
-            if (isJumping) {
-                verticalSpeed += gravity; 
-                pos.y += verticalSpeed; 
-
-                if (world.checkCollision(this)) {
-                    pos.y = groundLevel; 
-                    verticalSpeed = 0; 
-                    isJumping = false; 
-                    state = 1; 
-                    stateTimer = maxStateTimer; 
+            // Check for attacking if within hitbox
+            if (distanceToPlayer < player.hurtboxWidth && attackCooldown <= 0) {
+                attack(player);
+            }
+        } else {
+            // Patrol logic
+            if (facingRight) {
+                pos.x += speed;
+                if (pos.x > platformEndX - hurtboxWidth) {
+                    facingRight = false; // Change direction
+                }
+            } else {
+                pos.x -= speed;
+                if (pos.x < platformStartX) {
+                    facingRight = true; // Change direction
                 }
             }
-            break;
-    }
-
-        if (world.checkCollision(this)) {
-
-            if (facingRight) {
-                pos.x = pos.x - hitboxWidth; 
-            } else {
-                pos.x = pos.x + hitboxWidth; 
-            }
         }
 
-        animationTimer += 1 / 60.0;
+        // Update attack cooldown
+        if (attackCooldown > 0) {
+            attackCooldown--;
+        }
+
+        // Update animations
+        animationTimer += 1 / 60.0; // Increment animation timer
         if (animationTimer >= frameDuration) {
             animationTimer = 0;
             currentFrame++;
-            if (isMoving() || isJumping) {
-                if (currentFrame >= textures.run.length) {
-                    currentFrame = 0; 
+            if (state == 1) {
+                // Attack state
+                if (currentFrame >= textures.attack1.length) {
+                    currentFrame = 0; // Reset to first frame of attack animation
+                    state = 0; // Return to idle/patrolling state after attack
                 }
             } else {
-                if (currentFrame >= textures.idle.length) {
-                    currentFrame = 0; 
+                // Idle/Run state
+                if (isMoving()) {
+                    if (currentFrame >= textures.run.length) {
+                        currentFrame = 0; 
+                    }
+                } else {
+                    if (currentFrame >= textures.idle.length) {
+                        currentFrame = 0; 
+                    }
                 }
             }
         }
     }
 
-    void changeState() {
-        stateTimer = maxStateTimer;
-        if (state == 0) {
-            state = 1;  
-        } else if (state == 1) {
-            state = 2;  
-        } else if (state == 2) {
-            state = 0;  
+    /**
+     * Performs an attack on the player if the enemy is in the correct state.
+     * The attack deals damage to the player.
+     *
+     * @param player The player character to attack.
+     */
+    void attack(localPlayer player) {
+        if (state == 0) { // Only attack if in idle/patrolling state
+            state = 1; // Switch to attack state
+            player.takeDamage(damageDealt); // Inflict damage to the player
+            println("Enemy attacked player! Damage dealt: " + damageDealt);
+            attackCooldown = 60; // Set cooldown for the next attack
         }
     }
 
+    /**
+     * Checks if the enemy is currently moving.
+     *
+     * @return True if the enemy is moving, false otherwise.
+     */
     boolean isMoving() {
-        return state == 0;
+        return state == 0; // Moving state corresponds to idle/patrolling
     }
 
+    /**
+     * Draws the enemy on the screen.
+     * Displays the enemy's hurtbox, current animation frame, and health bar.
+     */
     void draw() {
         if (isAlive) {
             stroke(0, 0, 255);
             fill(155, 125, 20, 155);
-            rect(pos.x, pos.y, hitboxWidth, hitboxHeight); 
+            rect(pos.x, pos.y, hurtboxWidth, hurtboxHeight); // Draw the hurtbox
 
             PImage currentSprite;
-            if (isMoving() || isJumping) {
-                currentSprite = textures.run[currentFrame % textures.run.length];
+            if (state == 1) {
+                // Use attack animation
+                currentSprite = textures.attack1[currentFrame % textures.attack1.length];
             } else {
-                currentSprite = textures.idle[currentFrame % textures.idle.length];
+                // Use idle or run animation
+                currentSprite = isMoving() ? textures.run[currentFrame % textures.run.length] : textures.idle[currentFrame % textures.idle.length];
             }
 
+            // Push matrix to isolate transformations
             pushMatrix();
-            translate(pos.x + hitboxWidth / 2, pos.y + hitboxHeight - spriteHeight + 35); 
+            translate(pos.x + hurtboxWidth / 2, pos.y + hurtboxHeight - spriteHeight + 35); 
 
+            // Flip texture if not facing right
             if (facingRight) {
                 image(currentSprite, -spriteWidth / 2, 0, spriteWidth, spriteHeight);
             } else {
+                // Flip only the texture, keeping the position intact
                 scale(-1, 1); 
                 image(currentSprite, -spriteWidth / 2, 0, spriteWidth, spriteHeight);
             }
 
             popMatrix();
 
+            // Draw health bar
             fill(255, 0, 0);
-            rect(pos.x, pos.y - 30, hitboxWidth * (hp / 50.0), 5); 
+            rect(pos.x, pos.y - 30, hurtboxWidth * (hp / 50.0), 5); 
 
+            // Display damage taken
             if (damageDisplayTimer > 0) {
                 fill(255, 255, 0);
                 textAlign(CENTER);
-                text("-" + damageDealt, pos.x + hitboxWidth / 2, pos.y - 25);
+                text("-" + damageDealt, pos.x + hurtboxWidth / 2, pos.y - 25); // Hardcoded dmg thing
                 damageDisplayTimer--;
             }
 
+            // Update hit cooldown timer
             if (hitCooldown > 0) {
                 hitCooldown--;
             }
